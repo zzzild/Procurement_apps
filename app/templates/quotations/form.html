@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block title %}Quotation{% endblock %}
+
+{% block content %}
+<p class="text-sm text-slate-500">
+  <a href="{{ url_for('main.request_detail', pr_id=pr.id) }}">
+    {{ pr.request_number }}
+  </a>
+  / Vendor quotation
+</p>
+
+<h1 class="mt-2 text-3xl font-bold">Add quotation</h1>
+<p class="mt-1 text-slate-500">
+  Record each supplier's quote against the approved request.
+</p>
+
+<!-- OCR document upload -->
+<section class="mt-6 rounded-xl border bg-white p-6">
+  <h2 class="font-semibold">Extract from a document (optional)</h2>
+
+  <form
+    method="post"
+    enctype="multipart/form-data"
+    action="{{ url_for('main.quotation_ocr') }}"
+    class="mt-3 flex flex-wrap items-center gap-3"
+  >
+    <input
+      type="hidden"
+      name="csrf_token"
+      value="{{ csrf_token() }}"
+    >
+
+    <input
+      type="hidden"
+      name="pr_id"
+      value="{{ pr.id }}"
+    >
+
+    <input
+      type="file"
+      name="document"
+      accept="image/png,image/jpeg,image/tiff,application/pdf"
+      required
+      class="text-sm"
+    >
+
+    <button class="rounded-lg border px-4 py-2 text-sm font-semibold">
+      Run OCR
+    </button>
+
+    <span class="text-xs text-slate-500">
+      Image/PDF, max 8 MB. Review every extracted field.
+    </span>
+  </form>
+</section>
+
+<!-- Quotation form -->
+<form
+  method="post"
+  action="{{ url_for('main.quotation_new', pr_id=pr.id) }}"
+  class="mt-5 rounded-xl border bg-white p-6"
+>
+  <input
+    type="hidden"
+    name="csrf_token"
+    value="{{ csrf_token() }}"
+  >
+
+  <input
+    type="hidden"
+    name="ocr_status"
+    value="{{ ocr_status }}"
+  >
+
+  <input
+    type="hidden"
+    name="document_name"
+    value="{{ document_name }}"
+  >
+
+  <input
+    type="hidden"
+    name="ocr_text"
+    value="{{ ocr_text }}"
+  >
+
+  {% if extracted %}
+    <details class="mb-5 rounded-lg bg-slate-50 p-4">
+      <summary class="cursor-pointer text-sm font-semibold">
+        Extracted field candidates · verify before saving
+      </summary>
+
+      <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+        {% for key, value in extracted.items() %}
+          <div>
+            <dt class="text-slate-500">
+              {{ key | replace("_", " ") | title }}
+            </dt>
+
+            <dd class="font-medium">
+              {{ value }}
+            </dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </details>
+  {% endif %}
+
+  {% if ocr_text %}
+    <details class="mb-5 rounded-lg bg-slate-50 p-4">
+      <summary class="cursor-pointer text-sm font-semibold">
+        Review recognized source text
+      </summary>
+
+      <pre class="mt-3 whitespace-pre-wrap text-xs">{{ ocr_text }}</pre>
+    </details>
+  {% endif %}
+
+  <!-- Vendor and quotation details -->
+  <div class="grid gap-4 md:grid-cols-2">
+    <label class="text-sm">
+      Vendor
+
+      <select
+        name="vendor_id"
+        required
+        class="mt-1 w-full rounded-lg border px-3 py-2"
+      >
+        <option value="">Select vendor</option>
+
+        {% for vendor in vendors %}
+          <option
+            value="{{ vendor.id }}"
+            {% if extracted.get('vendor_name', '') | lower == vendor.name | lower %}
+              selected
+            {% endif %}
+          >
+            {{ vendor.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="text-sm">
+      Quotation number
+
+      <input
+        name="quotation_number"
+        required
+        value="{{ extracted.get('quotation_number', '') }}"
+        class="mt-1 w-full rounded-lg border px-3 py-2"
+      >
+    </label>
+
+    <label class="text-sm">
+      Quotation date
+
+      <input
+        name="quotation_date"
+        type="date"
+        value="{{ extracted.get('quotation_date', '') }}"
+        class="mt-1 w-full rounded-lg border px-3 py-2"
+      >
+    </label>
+
+    <label class="text-sm">
+      Valid until
+
+      <input
+        name="valid_until"
+        type="date"
+        value="{{ extracted.get('valid_until', '') }}"
+        class="mt-1 w-full rounded-lg border px-3 py-2"
+      >
+    </label>
+
+    <label class="text-sm">
+      Delivery days
+
+      <input
+        name="delivery_days"
+        type="number"
+        min="1"
+        value="{{ extracted.get('delivery_days', '') }}"
+        class="mt-1 w-full rounded-lg border px-3 py-2"
+      >
+    </label>
+  </div>
+
+  <!-- Quoted prices -->
+  <h2 class="mt-7 font-semibold">Quoted unit prices (IDR)</h2>
+
+  <div class="mt-3 divide-y">
+    {% for item in pr.items %}
+      <label
+        class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+      >
+        <span>
+          {{ item.item_name }} · {{ item.quantity }} {{ item.unit }}
+        </span>
+
+        <input
+          required
+          type="number"
+          min="0"
+          step="0.01"
+          name="unit_price_{{ item.id }}"
+          placeholder="Unit price"
+          {% if extracted.get("unit_price") and extracted.get("item_name", "") | lower in item.item_name | lower %}
+            value="{{ extracted.get('unit_price') }}"
+          {% endif %}
+          class="w-48 rounded-lg border px-3 py-2"
+        >
+      </label>
+    {% endfor %}
+  </div>
+
+  <p class="mt-3 text-sm text-slate-500">
+    Total is calculated from the purchase request quantity multiplied by
+    the quotation unit price. OCR does not guess unrecognized unit prices.
+  </p>
+
+  <!-- Form actions -->
+  <div class="mt-6 flex gap-3">
+    <button
+      type="submit"
+      class="rounded-lg bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white"
+    >
+      Save quotation
+    </button>
+
+    <a
+      href="{{ url_for('main.request_detail', pr_id=pr.id) }}"
+      class="rounded-lg border px-4 py-2.5 text-sm"
+    >
+      Cancel
+    </a>
+  </div>
+</form>
+{% endblock %}

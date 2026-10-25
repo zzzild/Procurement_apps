@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{# Pengelompokan status -> warna. Status di luar daftar tampil abu-abu. #}
+{% set groups = {
+'approved':'ok','completed':'ok','received':'ok','closed':'ok',
+'rejected':'bad','cancelled':'bad','canceled':'bad',
+'submitted':'wait','pending':'wait','pending_approval':'wait','partially_received':'wait',
+'ordered':'info','sent':'info','open':'info'
+} %}
+{% set badge = {
+'ok':'bg-emerald-50 text-emerald-700','bad':'bg-rose-50 text-rose-700',
+'wait':'bg-amber-50 text-amber-700','info':'bg-blue-50 text-blue-700','none':'bg-slate-100 text-slate-600'
+} %}
+{% set dot = {
+'ok':'bg-emerald-500','bad':'bg-rose-500','wait':'bg-amber-500','info':'bg-blue-500','none':'bg-slate-400'
+} %}
+{% set total = rows|length if rows else 0 %}
+
+<header class="mb-8">
+  <span class="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{{ role_label }}</span>
+  <h1 class="mt-3 text-2xl font-semibold text-slate-900 sm:text-3xl">
+    Good day, {{ current_user.name.split(' ')[0] }}
+  </h1>
+  <p class="mt-1 text-slate-500">Here is what needs your attention today.</p>
+</header>
+
+{# Ringkasan angka: satu strip tipis, bukan kartu-kartu besar #}
+<div
+  class="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:flex sm:gap-0 sm:divide-x sm:divide-slate-200 sm:bg-white">
+  {% for key, value in stats.items() %}
+  <div class="bg-white px-4 py-3 last:odd:col-span-2 sm:flex-1 sm:px-5">
+    <p class="truncate text-xs capitalize text-slate-500">{{ key|replace('_',' ') }}</p>
+    <p class="mt-0.5 text-2xl font-semibold tabular-nums {{ 'text-blue-600' if loop.first else 'text-slate-900' }}">
+      {{ value }}
+    </p>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid gap-6 xl:grid-cols-3">
+  <!-- Tabel -->
+  <section class="self-start overflow-hidden rounded-lg border border-slate-200 bg-white {{ 'xl:col-span-2' if rows else 'xl:col-span-3' }}">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+      <h2 class="font-semibold text-slate-900">
+        {{ 'Purchase Orders to receive' if current_user.role=='receiver' else 'Recent Purchase Requests' }}
+      </h2>
+      {% if current_user.role=='requester' %}
+      <a href="{{ url_for('main.purchase_requests') }}"
+        class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" />
+        </svg>
+        New request
+      </a>
+      {% endif %}
+    </div>
+
+    {% if rows %}
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[32rem] text-left text-sm">
+        <thead class="bg-slate-50 text-xs font-medium text-slate-500">
+          <tr>
+            <th class="px-5 py-3">Reference</th>
+            <th class="px-5 py-3">Title / Vendor</th>
+            <th class="px-5 py-3">Status</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in rows %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-5 py-4 font-medium text-slate-900">
+              {{ row.po_number if current_user.role=='receiver' else row.request_number }}
+            </td>
+            <td class="px-5 py-4 text-slate-700">
+              {{ row.vendor.name if current_user.role=='receiver' else row.title }}
+            </td>
+            <td class="px-5 py-4">
+              <span class="rounded-md px-2 py-0.5 text-xs font-medium {{ badge[groups.get(row.status, 'none')] }}">{{
+                row.status|replace('_',' ')|title }}</span>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <a class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                href="{{ url_for('main.po_detail',po_id=row.id) if current_user.role=='receiver' else url_for('main.request_detail',pr_id=row.id) }}">Open</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center px-5 py-14 text-center">
+      <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />
+        </svg>
+      </span>
+      <p class="mt-4 text-sm text-slate-500">Nothing to review yet. New work will appear here.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Ringkasan status (dihitung dari daftar di sebelah kiri) -->
+  {% if rows %}
+  <aside class="self-start rounded-lg border border-slate-200 bg-white p-5">
+    <h2 class="font-semibold text-slate-900">Status overview</h2>
+    <p class="mt-1 text-sm text-slate-500">From the {{ total }} item{{ '' if total == 1 else 's' }} listed.</p>
+
+    <div class="mt-5 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-slate-100"
+      role="img" aria-label="Distribusi status">
+      {% for status, items in rows|groupby('status') %}
+      <div class="{{ dot[groups.get(status, 'none')] }}" style="width: {{ (items|length / total * 100)|round(1) }}%"></div>
+      {% endfor %}
+    </div>
+
+    <ul class="mt-5 space-y-3 text-sm">
+      {% for status, items in rows|groupby('status') %}
+      <li class="flex items-center gap-3">
+        <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ dot[groups.get(status, 'none')] }}"></span>
+        <span class="flex-1 text-slate-700">{{ status|replace('_',' ')|title }}</span>
+        <span class="font-medium tabular-nums text-slate-900">{{ items|length }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

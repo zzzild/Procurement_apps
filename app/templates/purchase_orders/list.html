@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Orders{% endblock %}
+{% block content %}
+{# Pengelompokan status -> warna (sama dengan dashboard). Status di luar daftar tampil abu-abu. #}
+{% set groups = {
+'approved':'ok','completed':'ok','received':'ok','closed':'ok',
+'rejected':'bad','cancelled':'bad','canceled':'bad',
+'submitted':'wait','pending':'wait','pending_approval':'wait','partially_received':'wait',
+'ordered':'info','sent':'info','open':'info'
+} %}
+{% set badge = {
+'ok':'bg-emerald-50 text-emerald-700','bad':'bg-rose-50 text-rose-700',
+'wait':'bg-amber-50 text-amber-700','info':'bg-blue-50 text-blue-700','none':'bg-slate-100 text-slate-600'
+} %}
+
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold text-slate-900 sm:text-3xl">Purchase Orders</h1>
+  <p class="mt-1 text-slate-500">Issued orders and receiving progress.</p>
+</header>
+
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+  {% if orders %}
+  <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+    <h2 class="text-sm font-semibold text-slate-900">All orders</h2>
+    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600">{{ orders|length
+      }}</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[36rem] text-left text-sm">
+      <thead class="bg-slate-50 text-xs font-medium text-slate-500">
+        <tr>
+          <th class="px-5 py-3">PO</th>
+          <th class="px-5 py-3">Request</th>
+          <th class="px-5 py-3">Vendor</th>
+          <th class="px-5 py-3">Status</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for po in orders %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-4 font-medium text-slate-900">{{ po.po_number }}</td>
+          <td class="px-5 py-4 text-slate-600">{{ po.purchase_request.request_number }}</td>
+          <td class="px-5 py-4 text-slate-700">{{ po.vendor.name }}</td>
+          <td class="px-5 py-4">
+            <span class="rounded-md px-2 py-0.5 text-xs font-medium {{ badge[groups.get(po.status, 'none')] }}">{{
+              po.status|replace('_',' ')|title }}</span>
+          </td>
+          <td class="px-5 py-4 text-right">
+            <a href="{{ url_for('main.po_detail',po_id=po.id) }}"
+              class="font-medium text-blue-600 hover:text-blue-800 hover:underline">Details</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center px-5 py-14 text-center">
+    <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10" />
+      </svg>
+    </span>
+    <p class="mt-4 text-sm text-slate-500">No purchase orders have been issued.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

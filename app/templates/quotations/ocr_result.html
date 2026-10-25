@@ -1,0 +1,39 @@
+{% extends 'base.html' %}{% block title %}OCR review{% endblock %}{% block
+content %}
+<h1 class="text-3xl font-bold">OCR extraction review</h1>
+<p class="mt-2 text-slate-500">
+  OCR output is a draft. Copy verified values into the quotation form.
+</p>
+<section class="mt-6 grid gap-5 lg:grid-cols-2">
+  <div class="rounded-xl border bg-white p-5">
+    <h2 class="font-semibold">Fields found</h2>
+    {% if extracted %}
+    <dl class="mt-4 space-y-3 text-sm">
+      {% for key,value in extracted.items() %}
+      <div class="flex justify-between gap-3 border-b pb-2">
+        <dt class="text-slate-500">{{ key|replace('_',' ')|title }}</dt>
+        <dd class="font-medium">{{ value }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% else %}
+    <p class="mt-3 text-sm text-amber-700">
+      No supported labeled fields were found. Use the OCR text to enter values
+      manually.
+    </p>
+    {% endif %}
+  </div>
+  <div class="rounded-xl border bg-white p-5">
+    <h2 class="font-semibold">Recognized text</h2>
+    <pre
+      class="mt-3 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-xs leading-5"
+    >
+{{ text }}</pre
+    >
+  </div>
+</section>
+<a
+  href="{{ back or url_for('main.purchase_requests') }}"
+  class="mt-5 inline-block rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white"
+  >Return to quotation form</a
+>{% endblock %}

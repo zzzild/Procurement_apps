@@ -1,0 +1,50 @@
+{% extends 'base.html' %}{% block title %}Compare quotations{% endblock %}{%
+block content %}
+<p class="text-sm text-slate-500">{{ pr.request_number }} / Vendor selection</p>
+<h1 class="mt-2 text-3xl font-bold">Compare quotations</h1>
+<p class="mt-1 text-slate-500">
+  Select the offer that best meets the request. Recommendation is lowest total;
+  final selection is manual.
+</p>
+{% if quotations %}
+<form method="post" class="mt-6 space-y-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% for q
+  in quotations|sort(attribute='total_price') %}<label
+    class="block cursor-pointer rounded-xl border bg-white p-5 hover:border-cyan-500"
+    ><div class="flex flex-wrap justify-between gap-2">
+      <div>
+        <input
+          type="radio"
+          name="quotation_id"
+          value="{{ q.id }}"
+          required
+          class="mr-2"
+        /><b>{{ q.vendor.name }}</b
+        ><span
+          class="ml-2 rounded-full bg-cyan-50 px-2 py-1 text-xs text-cyan-800"
+          >{{ 'Lowest total' if loop.first else 'Option' }}</span
+        >
+      </div>
+      <b>IDR {{ '{:,.0f}'.format(q.total_price) }}</b>
+    </div>
+    <p class="mt-2 text-sm text-slate-500">
+      Quote {{ q.quotation_number }} · delivery {{ q.delivery_days or
+      'unspecified' }} days · {{ q.items|length }} items
+    </p>
+    <div class="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+      {% for item in q.items %}<span
+        >{{ item.item_name }}: IDR {{ '{:,.0f}'.format(item.unit_price) }}/{{
+        item.unit }}</span
+      >{% endfor %}
+    </div></label
+  >{% endfor %}<button
+    class="rounded-lg bg-cyan-700 px-5 py-3 text-sm font-semibold text-white"
+  >
+    Issue Purchase Order
+  </button>
+</form>
+{% else %}
+<div class="mt-6 rounded-xl border bg-white p-8 text-center text-slate-500">
+  No quotations recorded. Add at least one complete quotation first.
+</div>
+{% endif %}{% endblock %}

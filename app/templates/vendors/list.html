@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block title %}Vendors{% endblock %}
+{% block content %}
+{% set field = 'mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600' %}
+{% set active_count = vendors|selectattr('is_active')|list|length if vendors else 0 %}
+
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900 sm:text-3xl">Vendor Management</h1>
+    <p class="mt-1 text-slate-500">Maintain vendor contact details for quotation sourcing.</p>
+  </div>
+  <button type="button" data-vendor-add
+    class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" aria-hidden="true">
+      <path d="M10 4v12M4 10h12" />
+    </svg>
+    Add vendor
+  </button>
+</header>
+
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+  {% if vendors %}
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-semibold text-slate-900">All vendors</h2>
+      <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600">{{
+        vendors|length }}</span>
+      <span class="text-xs text-slate-500">{{ active_count }} active</span>
+    </div>
+    <div class="relative w-full sm:w-64">
+      <label for="vendor-search" class="sr-only">Cari vendor</label>
+      <svg class="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+        <circle cx="9" cy="9" r="5.5" />
+        <path d="M13.5 13.5L17 17" />
+      </svg>
+      <input id="vendor-search" type="search" placeholder="Cari vendor..."
+        class="block w-full rounded-md border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600" />
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[44rem] text-left text-sm">
+      <thead class="bg-slate-50 text-xs font-medium text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Vendor</th>
+          <th class="px-5 py-3">Contact</th>
+          <th class="px-5 py-3">Code</th>
+          <th class="px-5 py-3">Status</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody id="vendor-rows" class="divide-y divide-slate-100">
+        {% for vendor in vendors %}
+        <tr class="hover:bg-slate-50"
+          data-search="{{ ((vendor.name or '') ~ ' ' ~ (vendor.email or '') ~ ' ' ~ (vendor.contact_person or '') ~ ' ' ~ (vendor.vendor_code or ''))|lower }}">
+          <td class="px-5 py-4">
+            <div class="flex items-center gap-3">
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-sm font-semibold text-blue-700"
+                aria-hidden="true">{{ vendor.name[:1]|upper }}</span>
+              <div class="min-w-0">
+                <p class="truncate font-medium text-slate-900">{{ vendor.name }}</p>
+                <p class="truncate text-xs text-slate-500">{{ vendor.email or '—' }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-5 py-4">
+            <p class="text-slate-700">{{ vendor.contact_person or '—' }}</p>
+            <p class="text-xs text-slate-500">{{ vendor.phone or '' }}</p>
+          </td>
+          <td class="px-5 py-4 text-slate-600">{{ vendor.vendor_code }}</td>
+          <td class="px-5 py-4">
+            {% if vendor.is_active %}
+            <span
+              class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"><span
+                class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Active</span>
+            {% else %}
+            <span
+              class="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"><span
+                class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Inactive</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-4 text-right">
+            <button type="button" data-vendor-edit
+              data-action="{{ url_for('main.vendor_update', vendor_id=vendor.id) }}"
+              data-name="{{ vendor.name or '' }}"
+              data-contact="{{ vendor.contact_person or '' }}"
+              data-email="{{ vendor.email or '' }}"
+              data-phone="{{ vendor.phone or '' }}"
+              data-address="{{ vendor.address or '' }}"
+              data-active="{{ '1' if vendor.is_active else '0' }}"
+              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 16l.8-3.2L13.5 4a1.4 1.4 0 012 2l-8.7 8.8z" />
+              </svg>
+              Edit
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr id="vendor-nomatch" class="hidden">
+          <td colspan="5" class="px-5 py-10 text-center text-sm text-slate-500">Tidak ada vendor yang cocok.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center px-5 py-14 text-center">
+    <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 21V8l8-5 8 5v13M9 21v-6h6v6" />
+      </svg>
+    </span>
+    <p class="mt-4 text-sm text-slate-500">No vendors yet. Add the first vendor.</p>
+    <button type="button" data-vendor-add
+      class="mt-4 rounded-md border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+      Add vendor
+    </button>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Popup: tambah / edit vendor (satu dialog dipakai untuk keduanya) -->
+<dialog id="vendor-dialog" aria-labelledby="vendor-dialog-title"
+  class="m-auto w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border-0 bg-white p-0 text-slate-800 shadow-xl backdrop:bg-slate-900/50">
+  <form id="vendor-form" method="post" class="flex max-h-[90vh] flex-col">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+    <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+      <h2 id="vendor-dialog-title" class="text-lg font-semibold text-slate-900">Add vendor</h2>
+      <button type="button" data-vendor-close aria-label="Tutup"
+        class="-mr-2 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" aria-hidden="true">
+          <path d="M5 5l10 10M15 5L5 15" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="space-y-4 overflow-y-auto px-6 py-5">
+      <label class="block text-sm font-medium text-slate-700">Vendor name <span class="text-rose-600">*</span>
+        <input required name="name" class="{{ field }}" />
+      </label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm font-medium text-slate-700">Contact person
+          <input name="contact_person" class="{{ field }}" />
+        </label>
+        <label class="block text-sm font-medium text-slate-700">Phone
+          <input name="phone" type="tel" class="{{ field }}" />
+        </label>
+      </div>
+      <label class="block text-sm font-medium text-slate-700">Email
+        <input name="email" type="email" class="{{ field }}" />
+      </label>
+      <label class="block text-sm font-medium text-slate-700">Address
+        <textarea name="address" rows="2" class="{{ field }}"></textarea>
+      </label>
+      <label id="vendor-active-wrap" class="hidden items-center gap-2 text-sm font-medium text-slate-700">
+        <input type="checkbox" name="is_active" id="vendor-active"
+          class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600" />
+        Active
+      </label>
+    </div>
+
+    <div class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+      <button type="button" data-vendor-close
+        class="rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100">
+        Cancel
+      </button>
+      <button id="vendor-submit"
+        class="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+        Save vendor
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  (() => {
+    const dialog = document.getElementById("vendor-dialog");
+    const form = document.getElementById("vendor-form");
+    const title = document.getElementById("vendor-dialog-title");
+    const submit = document.getElementById("vendor-submit");
+    const activeWrap = document.getElementById("vendor-active-wrap");
+    const activeBox = document.getElementById("vendor-active");
+    const el = (name) => form.elements[name];
+
+    const show = () => {
+      dialog.showModal();
+      document.body.classList.add("overflow-hidden");
+      el("name").focus();
+    };
+
+    const openAdd = () => {
+      form.reset();
+      form.removeAttribute("action");
+      title.textContent = "Add vendor";
+      submit.textContent = "Save vendor";
+      activeWrap.classList.add("hidden");
+      activeWrap.classList.remove("flex");
+      activeBox.disabled = true;
+      show();
+    };
+
+    const openEdit = (btn) => {
+      const d = btn.dataset;
+      form.reset();
+      form.action = d.action;
+      title.textContent = "Edit vendor";
+      submit.textContent = "Save changes";
+      el("name").value = d.name;
+      el("contact_person").value = d.contact;
+      el("email").value = d.email;
+      el("phone").value = d.phone;
+      el("address").value = d.address;
+      activeBox.disabled = false;
+      activeBox.checked = d.active === "1";
+      activeWrap.classList.remove("hidden");
+      activeWrap.classList.add("flex");
+      show();
+    };
+
+    document.querySelectorAll("[data-vendor-add]").forEach((b) => b.addEventListener("click", openAdd));
+    document.querySelectorAll("[data-vendor-edit]").forEach((b) => b.addEventListener("click", () => openEdit(b)));
+    document.querySelectorAll("[data-vendor-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("close", () => document.body.classList.remove("overflow-hidden"));
+
+    let downOnBackdrop = false;
+    dialog.addEventListener("mousedown", (e) => { downOnBackdrop = e.target === dialog; });
+    dialog.addEventListener("click", (e) => { if (e.target === dialog && downOnBackdrop) dialog.close(); });
+
+    const search = document.getElementById("vendor-search");
+    const noMatch = document.getElementById("vendor-nomatch");
+    if (search) {
+      search.addEventListener("input", () => {
+        const q = search.value.trim().toLowerCase();
+        let visible = 0;
+        document.querySelectorAll("#vendor-rows tr[data-search]").forEach((row) => {
+          const hit = row.dataset.search.includes(q);
+          row.classList.toggle("hidden", !hit);
+          if (hit) visible++;
+        });
+        noMatch.classList.toggle("hidden", visible > 0);
+      });
+    }
+
+    if (new URLSearchParams(window.location.search).get("new") === "1") {
+      openAdd();
+      history.replaceState(null, "", window.location.pathname);
+    }
+  })();
+</script>
+{% endblock %}

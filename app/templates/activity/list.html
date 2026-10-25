@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Activity History{% endblock %}
+{% block content %}
+<header class="mb-6">
+  <h1 class="text-2xl font-semibold text-slate-900 sm:text-3xl">Activity History</h1>
+  <p class="mt-1 text-slate-500">A record of key actions across your procurement workflow.</p>
+</header>
+
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+  {% if logs %}
+  <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+    <h2 class="text-sm font-semibold text-slate-900">All activity</h2>
+    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600">{{ logs|length
+      }}</span>
+  </div>
+
+  <ul class="divide-y divide-slate-100">
+    {% for log in logs %}
+    <li class="flex items-start gap-4 px-5 py-4 hover:bg-slate-50">
+      <span
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700"
+        aria-hidden="true">{{ log.user.name[:1]|upper }}</span>
+
+      <div class="min-w-0 flex-1">
+        <p class="font-medium text-slate-900">{{ log.description }}</p>
+        <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+          <span>{{ log.user.name }}</span>
+          <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{{
+            log.action|replace('_',' ')|title }}</span>
+          <span class="text-xs">{{ log.entity_type|replace('_',' ')|title }}</span>
+        </p>
+      </div>
+
+      <time class="shrink-0 text-right text-xs tabular-nums text-slate-500"
+        datetime="{{ log.created_at.strftime('%Y-%m-%dT%H:%M') }}">
+        <span class="block">{{ log.created_at.strftime('%Y-%m-%d') }}</span>
+        <span class="block text-slate-400">{{ log.created_at.strftime('%H:%M') }}</span>
+      </time>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="flex flex-col items-center px-5 py-14 text-center">
+    <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2" />
+      </svg>
+    </span>
+    <p class="mt-4 text-sm text-slate-500">No activity recorded yet.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Requests{% endblock %}
+{% block content %}
+{# Pengelompokan status -> warna (sama dengan dashboard). Status di luar daftar tampil abu-abu. #}
+{% set groups = {
+'approved':'ok','completed':'ok','received':'ok','closed':'ok',
+'rejected':'bad','cancelled':'bad','canceled':'bad',
+'submitted':'wait','pending':'wait','pending_approval':'wait','partially_received':'wait',
+'ordered':'info','sent':'info','open':'info'
+} %}
+{% set badge = {
+'ok':'bg-emerald-50 text-emerald-700','bad':'bg-rose-50 text-rose-700',
+'wait':'bg-amber-50 text-amber-700','info':'bg-blue-50 text-blue-700','none':'bg-slate-100 text-slate-600'
+} %}
+{% set field = 'mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600' %}
+
+<style>
+  /* Penomoran item otomatis & sembunyikan tombol hapus kalau hanya ada satu item */
+  #request-items { counter-reset: item; }
+  #request-items > .request-item { counter-increment: item; }
+  #request-items .item-no::before { content: "Item " counter(item); }
+  #request-items > .request-item:only-child [data-remove-item] { display: none; }
+</style>
+
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold text-slate-900 sm:text-3xl">Purchase Requests</h1>
+    <p class="mt-1 text-slate-500">
+      {{ 'Track your submitted purchasing needs.' if current_user.role=='requester' else 'Review and process purchase needs.' }}
+    </p>
+  </div>
+  {% if can_create %}
+  <button type="button" data-open-request
+    class="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" aria-hidden="true">
+      <path d="M10 4v12M4 10h12" />
+    </svg>
+    Create request
+  </button>
+  {% endif %}
+</header>
+
+<section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+  {% if requests %}
+  <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+    <h2 class="text-sm font-semibold text-slate-900">All requests</h2>
+    <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600">{{
+      requests|length }}</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full min-w-[40rem] text-left text-sm">
+      <thead class="bg-slate-50 text-xs font-medium text-slate-500">
+        <tr>
+          <th class="px-5 py-3">Reference</th>
+          <th class="px-5 py-3">Requester</th>
+          <th class="px-5 py-3">Title</th>
+          <th class="px-5 py-3">Items</th>
+          <th class="px-5 py-3">Status</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for pr in requests %}
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-4 font-medium text-slate-900">{{ pr.request_number }}</td>
+          <td class="px-5 py-4 text-slate-600">{{ pr.requester.name }}</td>
+          <td class="px-5 py-4 font-medium text-slate-900">{{ pr.title }}</td>
+          <td class="px-5 py-4 tabular-nums text-slate-600">{{ pr.items|length }}</td>
+          <td class="px-5 py-4">
+            <span class="rounded-md px-2 py-0.5 text-xs font-medium {{ badge[groups.get(pr.status, 'none')] }}">{{
+              pr.status|replace('_',' ')|title }}</span>
+          </td>
+          <td class="px-5 py-4 text-right">
+            <a class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+              href="{{ url_for('main.request_detail',pr_id=pr.id) }}">Details</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center px-5 py-14 text-center">
+    <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" />
+      </svg>
+    </span>
+    <p class="mt-4 text-sm text-slate-500">No requests match this view.</p>
+    {% if can_create %}
+    <button type="button" data-open-request
+      class="mt-4 rounded-md border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+      Create your first request
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{% if can_create %}
+<dialog id="new-request-dialog" aria-labelledby="new-request-title"
+  class="m-auto w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-lg border-0 bg-white p-0 text-slate-800 shadow-xl backdrop:bg-slate-900/50">
+  <form method="post" class="flex max-h-[90vh] flex-col">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+    <div class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+      <div>
+        <h2 id="new-request-title" class="text-lg font-semibold text-slate-900">Create a purchase request</h2>
+        <p class="mt-0.5 text-sm text-slate-500">Isi kebutuhan dan daftar barang, lalu kirim untuk persetujuan.</p>
+      </div>
+      <button type="button" data-close-request aria-label="Tutup"
+        class="-mr-2 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" aria-hidden="true">
+          <path d="M5 5l10 10M15 5L5 15" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="space-y-5 overflow-y-auto px-6 py-5">
+      <label class="block text-sm font-medium text-slate-700">Request title
+        <input required name="title" maxlength="180" class="{{ field }}" />
+      </label>
+
+      <label class="block text-sm font-medium text-slate-700">Business justification
+        <textarea required name="description" rows="3" class="{{ field }}"></textarea>
+      </label>
+
+      <div>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="text-sm font-medium text-slate-700">Items</h3>
+          <button type="button" id="add-request-item"
+            class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800">
+            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" aria-hidden="true">
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+            Add item
+          </button>
+        </div>
+
+        <div id="request-items" class="space-y-3">
+          <div class="request-item rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="item-no text-xs font-medium text-slate-500"></span>
+              <button type="button" data-remove-item
+                class="text-xs font-medium text-slate-500 hover:text-rose-600">Remove</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <label class="col-span-2 block text-xs font-medium text-slate-600 sm:col-span-3">Item name
+                <input required name="item_name[]" class="{{ field }}" />
+              </label>
+              <label class="block text-xs font-medium text-slate-600">Quantity
+                <input required type="number" min="1" step="1" name="quantity[]" class="{{ field }}" />
+              </label>
+              <label class="block text-xs font-medium text-slate-600">Unit
+                <input required name="unit[]" placeholder="pcs" class="{{ field }}" />
+              </label>
+              <label class="col-span-2 block text-xs font-medium text-slate-600 sm:col-span-1">Est. unit price
+                <input type="number" min="0" step="1" name="estimated_unit_price[]" value="0"
+                  class="{{ field }}" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:justify-end">
+      <button type="button" data-close-request
+        class="rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100">
+        Cancel
+      </button>
+      <button
+        class="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+        Submit for approval
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  (() => {
+    const dialog = document.getElementById("new-request-dialog");
+    const list = document.getElementById("request-items");
+
+    const openDialog = () => {
+      if (!dialog.open) dialog.showModal();
+      document.body.classList.add("overflow-hidden");
+    };
+
+    document.querySelectorAll("[data-open-request]").forEach((btn) => btn.addEventListener("click", openDialog));
+    document.querySelectorAll("[data-close-request]").forEach((btn) => btn.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("close", () => document.body.classList.remove("overflow-hidden"));
+    let downOnBackdrop = false;
+    dialog.addEventListener("mousedown", (e) => { downOnBackdrop = e.target === dialog; });
+    dialog.addEventListener("click", (e) => { if (e.target === dialog && downOnBackdrop) dialog.close(); });
+
+    document.getElementById("add-request-item").addEventListener("click", () => {
+      const row = list.querySelector(".request-item").cloneNode(true);
+      row.querySelectorAll("input").forEach((input) => {
+        input.value = input.name === "estimated_unit_price[]" ? "0" : "";
+      });
+      list.appendChild(row);
+      row.querySelector("input").focus();
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+
+    list.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-remove-item]");
+      if (btn && list.children.length > 1) btn.closest(".request-item").remove();
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1" || window.location.hash === "#new-request" || {{ 'true' if form_open else 'false' }}) {
+      openDialog();
+      history.replaceState(null, "", window.location.pathname);
+    }
+  })();
+</script>
+{% endif %}
+{% endblock %}
